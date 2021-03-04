@@ -3,13 +3,13 @@ local playersHealing = {}
 
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
-RegisterServerEvent('esx_ambulancejob:revive')
-AddEventHandler('esx_ambulancejob:revive', function(target)
+RegisterServerEvent('esx_ambulancejob:642352352352')
+AddEventHandler('esx_ambulancejob:642352352352', function(target)
 	local xPlayer = ESX.GetPlayerFromId(source)
 
 	if xPlayer.job.name == 'ambulance' or xPlayer.job.name == 'police' then
 		xPlayer.addMoney(Config.ReviveReward)
-		TriggerClientEvent('esx_ambulancejob:revive', target)
+		TriggerClientEvent('esx_ambulancejob:642352352352', target)
 	else
 		print(('esx_ambulancejob: %s attempted to revive!'):format(xPlayer.identifier))
 	end
@@ -241,10 +241,10 @@ TriggerEvent('es:addGroupCommand', 'revive', 'admin', function(source, args, use
 	if args[1] ~= nil then
 		if GetPlayerName(tonumber(args[1])) ~= nil then
 			print(('esx_ambulancejob: %s used admin revive'):format(GetPlayerIdentifiers(source)[1]))
-			TriggerClientEvent('esx_ambulancejob:revive', tonumber(args[1]))
+			TriggerClientEvent('esx_ambulancejob:642352352352', tonumber(args[1]))
 		end
 	else
-		TriggerClientEvent('esx_ambulancejob:revive', source)
+		TriggerClientEvent('esx_ambulancejob:642352352352', source)
 	end
 end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
@@ -305,12 +305,28 @@ AddEventHandler('esx_ambulancejob:setDeathStatus', function(isDead)
 	})
 end)
 
+TriggerEvent('es:addGroupCommand', 'heal', 'admin', function(source, args, user)
+	-- heal another player - don't heal source
+	if args[1] then
+		local playerId = tonumber(args[1])
 
-ESX.RegisterCommand('heal', 'admin', function(xPlayer, args, showError)
-	args.playerId.triggerEvent('esx_basicneeds:healPlayer')
-	args.playerId.triggerEvent('chat:addMessage', {args = {'^5HEAL', 'You have been healed.'}})
-end, true, {help = 'Heal a player, or yourself - restores thirst, hunger and health.', validate = true, arguments = {
-	{name = 'playerId', help = 'the player id', type = 'player'}
-}})
-
-TriggerServerEvent('chat:addSuggestion', 'heal', 'Restore Health, Hunger and Thirst to 100!')
+		-- is the argument a number?
+		if playerId then
+			-- is the number a valid player?
+			if GetPlayerName(playerId) then
+				print(('esx_basicneeds: %s healed %s'):format(GetPlayerIdentifier(source, 0), GetPlayerIdentifier(playerId, 0)))
+				TriggerClientEvent('esx_basicneeds:healPlayer', playerId)
+				TriggerClientEvent('chat:addMessage', source, { args = { '^5HEAL', 'You have been healed.' } })
+			else
+				TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Player not online.' } })
+			end
+		else
+			TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Invalid player id.' } })
+		end
+	else
+		print(('esx_basicneeds: %s healed self'):format(GetPlayerIdentifier(source, 0)))
+		TriggerClientEvent('esx_basicneeds:healPlayer', source)
+	end
+end, function(source, args, user)
+	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
+end, {help = 'Heal a player, or yourself - restores thirst, hunger and health.', params = {{name = 'playerId', help = '(optional) player id'}}})
