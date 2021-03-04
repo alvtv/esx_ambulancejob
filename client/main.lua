@@ -86,6 +86,7 @@ Citizen.CreateThread(function()
 			EnableControlAction(0, Keys['G'], true)
 			EnableControlAction(0, Keys['T'], true)
 			EnableControlAction(0, Keys['E'], true)
+			EnableControlAction(0, Keys['F'], true)
 		else
 			Citizen.Wait(500)
 		end
@@ -180,216 +181,266 @@ end
 
 function SendDistressSignal()
 	local playerPed = PlayerPedId()
-	local coords = GetEntityCoords(playerPed)
+	PedPosition		= GetEntityCoords(playerPed)
+	
+	local PlayerCoords = { x = PedPosition.x, y = PedPosition.y, z = PedPosition.z }
 
 	ESX.ShowNotification(_U('distress_sent'))
-	TriggerServerEvent('esx_phone:send', 'ambulance', _U('distress_message'), false, {
-		x = coords.x,
-		y = coords.y,
-		z = coords.z
+
+    TriggerServerEvent('esx_addons_gcphone:startCall', 'ambulance', _U('distress_message'), PlayerCoords, {
+
+		PlayerCoords = { x = PedPosition.x, y = PedPosition.y, z = PedPosition.z },
 	})
 end
 
 function DrawGenericTextThisFrame()
-	SetTextFont(4)
-	SetTextScale(0.0, 0.5)
-	SetTextColour(255, 255, 255, 255)
-	SetTextDropshadow(0, 0, 0, 0, 255)
-	SetTextEdge(1, 0, 0, 0, 255)
-	SetTextDropShadow()
-	SetTextOutline()
-	SetTextCentre(true)
+    SetTextFont(4)
+    SetTextScale(0.0, 0.5)
+    SetTextColour(255, 255, 255, 255)
+    SetTextDropshadow(0, 0, 0, 0, 255)
+    SetTextEdge(1, 0, 0, 0, 255)
+    SetTextDropShadow()
+    SetTextOutline()
+    SetTextCentre(true)
+end
+
+function DrawGenericTextThisFrame2()
+    SetTextFont(4)
+    SetTextScale(0.0, 0.4)
+    SetTextColour(255, 255, 255, 255)
+    SetTextDropshadow(0, 0, 0, 0, 255)
+    SetTextEdge(1, 0, 0, 0, 255)
+    SetTextDropShadow()
+    SetTextOutline()
+    SetTextCentre(true)
+end
+
+function DrawTextOnScreen(text, x, y, scale)
+    SetTextFont(4)
+    SetTextScale(scale, scale)
+    SetTextCentre(true)
+    SetTextDropshadow(2, 2, 0, 0, 0)
+    SetTextEdge(1, 0, 0, 0, 205)
+    SetTextEntry("STRING")
+    AddTextComponentString(text)
+    DrawText(x, y)
 end
 
 function secondsToClock(seconds)
-	local seconds, hours, mins, secs = tonumber(seconds), 0, 0, 0
-
-	if seconds <= 0 then
-		return 0, 0
-	else
-		local hours = string.format("%02.f", math.floor(seconds / 3600))
-		local mins = string.format("%02.f", math.floor(seconds / 60 - (hours * 60)))
-		local secs = string.format("%02.f", math.floor(seconds - hours * 3600 - mins * 60))
-
-		return mins, secs
-	end
+    local seconds, hours, mins, secs = tonumber(seconds), 0, 0, 0
+    if seconds <= 0 then
+        return 0, 0
+    else
+        local hours = string.format("%02.f", math.floor(seconds / 3600))
+        local mins = string.format("%02.f", math.floor(seconds / 60 - (hours * 60)))
+        local secs = string.format("%02.f", math.floor(seconds - hours * 3600 - mins * 60))
+        return mins, secs
+    end
 end
-
 function StartDeathTimer()
-	local canPayFine = false
+    local canPayFine = false
+    if Config.EarlyRespawnFine then
+        ESX.TriggerServerCallback(
+            "esx_ambulancejob:checkBalance",
+            function(canPay)
+                canPayFine = canPay
+            end
+        )
+    end
+    local earlySpawnTimer = ESX.Math.Round(Config.EarlyRespawnTimer / 1000)
+    local bleedoutTimer = ESX.Math.Round(Config.BleedoutTimer / 1000)
+    Citizen.CreateThread(
+        function()
+            -- early respawn timer
+            while earlySpawnTimer > 0 and IsDead do
+                Citizen.Wait(1000)
+                if earlySpawnTimer > 0 then
+                    earlySpawnTimer = earlySpawnTimer - 1
+                end
+            end
+            -- bleedout timer
+            while bleedoutTimer > 0 and IsDead do
+                Citizen.Wait(1000)
+                if bleedoutTimer > 0 then
+                    bleedoutTimer = bleedoutTimer - 1
+                end
+            end
+        end
+    )
+    Citizen.CreateThread(
+        function()
+            local text, timeHeld
+            local text2
+            -- early respawn timer
+            while earlySpawnTimer > 0 and IsDead do
+                Citizen.Wait(0)
+                local mins, secs = secondsToClock(earlySpawnTimer)
+                --text = _U("respawn_available_in", secondsToClock(earlySpawnTimer))
+                --text = '~w~Respawn available in ~o~'..mins..' ~w~minutes & ~o~'..secs..' ~w~seconds.'
+                --DrawGenericTextThisFrame()
+                --SetTextEntry("STRING")
+                --AddTextComponentString(text)
+                --DrawText(0.5, 0.8)
+                DrawTextOnScreen('~w~Respawn available in ~b~'..mins..' ~w~minutes & ~b~'..secs..' ~w~seconds.', 0.5, 0.8, 0.45)
+            end
+            -- bleedout timer
+            while bleedoutTimer > 0 and IsDead do
+                Citizen.Wait(0)
+                local mins2, secs2 = secondsToClock(bleedoutTimer)
+                text = '~w~You will bleed out in ~b~'..mins2..' ~w~minutes & ~b~'..secs2..' ~w~seconds.'
+               -- text = _U("respawn_bleedout_in", secondsToClock(bleedoutTimer))
+                if not Config.EarlyRespawnFine then
+                    text = text.. '\nHold [~b~E~s~] to Respawn'
+                    --text = text .. _U("respawn_bleedout_prompt")
+                    --text2 = _U("respawn_bleedout_prompt2")
+                    if IsControlPressed(0, Keys["E"]) and timeHeld > 60 then
+                        RemoveItemsAfterRPDeath('grove')
+                        break
+                    elseif IsControlPressed(0, Keys["F"]) and timeHeld > 60 then
+                        RemoveItemsAfterRPDeath('rzgs')
+                        break
+                    end
+                elseif Config.EarlyRespawnFine and canPayFine then
+                   -- text = text .. _U("respawn_bleedout_fine", ESX.Math.GroupDigits(Config.EarlyRespawnFineAmount))
+                   local reamount = ESX.Math.GroupDigits(Config.EarlyRespawnFineAmount)
+                   --text = text.. '\nHold [~o~E~s~] to Respawn at Grove Street for ~o~$'..reamount..'~s~'
+                    --text2 = _U("respawn_bleedout_fine2", 2500)
+                    DrawTextOnScreen('\nHold [~o~E~s~] to Respawn at Grove Street for ~o~$'..reamount..'~s~', 0.5, 0.81, 0.45)
+                    DrawTextOnScreen('\nHold [~o~F~s~] to Respawn at RZ Traintracks for ~o~$'..reamount..'~s~', 0.5, 0.85, 0.45)
+                    if IsControlPressed(0, Keys["E"]) and timeHeld > 60 then
+                        TriggerServerEvent("esx_ambulancejob:payFine")
+                        RemoveItemsAfterRPDeath('grove')
+                        break
+                    elseif IsControlPressed(0, Keys["F"]) and timeHeld > 60 then
+                        TriggerServerEvent("esx_ambulancejob:payFine")
+                        RemoveItemsAfterRPDeath('rzgs')
+                        break
+                    end
+                end
+                if IsControlPressed(0, Keys["E"]) then
+                    timeHeld = timeHeld + 1
+                elseif IsControlPressed(0, Keys["F"]) then
+                    timeHeld = timeHeld + 1
+                else
+                    timeHeld = 0
+                end
+                --DrawGenericTextThisFrame2()
+                --SetTextEntry("STRING")
+                ---AddTextComponentString(text)
+                --DrawText(0.5, 0.85)
+                DrawTextOnScreen(text, 0.5, 0.8, 0.45)
 
-	if Config.EarlyRespawnFine then
-		ESX.TriggerServerCallback('esx_ambulancejob:checkBalance', function(canPay)
-			canPayFine = canPay
-		end)
-	end
+                --DrawGenericTextThisFrame2()
+                --SetTextEntry("STRING")
+                --AddTextComponentString(text2)
+                --DrawText(0.5, 0.93) --45
+            end
 
-	local earlySpawnTimer = ESX.Math.Round(Config.EarlyRespawnTimer / 1000)
-	local bleedoutTimer = ESX.Math.Round(Config.BleedoutTimer / 1000)
-
-	Citizen.CreateThread(function()
-		-- early respawn timer
-		while earlySpawnTimer > 0 and IsDead do
-			Citizen.Wait(1000)
-
-			if earlySpawnTimer > 0 then
-				earlySpawnTimer = earlySpawnTimer - 1
-			end
-		end
-
-		-- bleedout timer
-		while bleedoutTimer > 0 and IsDead do
-			Citizen.Wait(1000)
-
-			if bleedoutTimer > 0 then
-				bleedoutTimer = bleedoutTimer - 1
-			end
-		end
-	end)
-
-	Citizen.CreateThread(function()
-		local text, timeHeld
-
-		-- early respawn timer
-		while earlySpawnTimer > 0 and IsDead do
-			Citizen.Wait(0)
-			text = _U('respawn_available_in', secondsToClock(earlySpawnTimer))
-
-			DrawGenericTextThisFrame()
-
-			SetTextEntry("STRING")
-			AddTextComponentString(text)
-			DrawText(0.5, 0.8)
-		end
-
-		-- bleedout timer
-		while bleedoutTimer > 0 and IsDead do
-			Citizen.Wait(0)
-			text = _U('respawn_bleedout_in', secondsToClock(bleedoutTimer))
-
-			if not Config.EarlyRespawnFine then
-				text = text .. _U('respawn_bleedout_prompt')
-
-				if IsControlPressed(0, Keys['E']) and timeHeld > 60 then
-					RemoveItemsAfterRPDeath()
-					break
-				end
-			elseif Config.EarlyRespawnFine and canPayFine then
-				text = text .. _U('respawn_bleedout_fine', ESX.Math.GroupDigits(Config.EarlyRespawnFineAmount))
-
-				if IsControlPressed(0, Keys['E']) and timeHeld > 60 then
-					TriggerServerEvent('esx_ambulancejob:payFine')
-					RemoveItemsAfterRPDeath()
-					break
-				end
-			end
-
-			if IsControlPressed(0, Keys['E']) then
-				timeHeld = timeHeld + 1
-			else
-				timeHeld = 0
-			end
-
-			DrawGenericTextThisFrame()
-
-			SetTextEntry("STRING")
-			AddTextComponentString(text)
-			DrawText(0.5, 0.8)
-		end
-			
-		if bleedoutTimer < 1 and IsDead then
-			RemoveItemsAfterRPDeath()
-		end
-	end)
+            if bleedoutTimer < 1 and IsDead then
+                RemoveItemsAfterRPDeath('grove')
+            end
+        end
+    )
 end
-
-function RemoveItemsAfterRPDeath()
-	TriggerServerEvent('esx_ambulancejob:setDeathStatus', false)
-
-	Citizen.CreateThread(function()
-		DoScreenFadeOut(800)
-
-		while not IsScreenFadedOut() do
-			Citizen.Wait(10)
-		end
-		ESX.TriggerServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function()
-			local formattedCoords = {
-				x = Config.RespawnPoint.coords.x,
-				y = Config.RespawnPoint.coords.y,
-				z = Config.RespawnPoint.coords.z
-			}
-
-			ESX.SetPlayerData('lastPosition', formattedCoords)
-			ESX.SetPlayerData('loadout', {})
-
-			TriggerServerEvent('esx:updateLastPosition', formattedCoords)
-			RespawnPed(PlayerPedId(), formattedCoords, Config.RespawnPoint.heading)
-
-			StopScreenEffect('DeathFailOut')
-			DoScreenFadeIn(800)
-		end)
-	end)
+function RemoveItemsAfterRPDeath(location)
+    TriggerServerEvent("esx_ambulancejob:setDeathStatus", false)
+    Citizen.CreateThread(
+        function()
+            DoScreenFadeOut(800)
+            while not IsScreenFadedOut() do
+                Citizen.Wait(10)
+            end
+            ESX.TriggerServerCallback(
+                "esx_ambulancejob:removeItemsAfterRPDeath",
+                function()
+                    local formattedCoords = {
+                        x = Config.RespawnPoint.coords.x,
+                        y = Config.RespawnPoint.coords.y,
+                        z = Config.RespawnPoint.coords.z
+                    }
+                    local formattedCoords2 = {
+                        x = Config.RespawnPoint2.coords.x,
+                        y = Config.RespawnPoint2.coords.y,
+                        z = Config.RespawnPoint2.coords.z
+                    }
+                    if location == 'grove' then
+                        ESX.SetPlayerData("lastPosition", formattedCoords)
+                        ESX.SetPlayerData("loadout", {})
+                        TriggerServerEvent("esx:updateLastPosition", formattedCoords)
+                        RespawnPed(PlayerPedId(), formattedCoords, Config.RespawnPoint.heading)
+                        StopScreenEffect("DeathFailOut")
+                        DoScreenFadeIn(800)
+                    elseif location == 'rzgs' then
+                        ESX.SetPlayerData("lastPosition", formattedCoords2)
+                        ESX.SetPlayerData("loadout", {})
+                        TriggerServerEvent("esx:updateLastPosition", formattedCoords2)
+                        RespawnPed(PlayerPedId(), formattedCoords2, Config.RespawnPoint2.heading)
+                        StopScreenEffect("DeathFailOut")
+                        DoScreenFadeIn(800)
+                    end
+                end
+            )
+        end
+    )
 end
-
 function RespawnPed(ped, coords, heading)
-	SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false, true)
-	NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, heading, true, false)
-	SetPlayerInvincible(ped, false)
-	TriggerEvent('playerSpawned', coords.x, coords.y, coords.z)
-	ClearPedBloodDamage(ped)
-
-	ESX.UI.Menu.CloseAll()
+    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false, true)
+    NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, heading, true, false)
+    SetPlayerInvincible(ped, false)
+    TriggerEvent("playerSpawned", coords.x, coords.y, coords.z)
+    ClearPedBloodDamage(ped)
+    ESX.UI.Menu.CloseAll()
 end
+--[[
+RegisterNetEvent("esx_phone:loaded")
+AddEventHandler(
+    "esx_phone:loaded",
+    function(phoneNumber, contacts)
+        local specialContact = {
+            name = "Ambulance",
+            number = "ambulance",
+            base64Icon = "data:image/png;base64,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"
+        }
+        TriggerEvent(
+            "esx_phone:addSpecialContact",
+            specialContact.name,
+            specialContact.number,
+            specialContact.base64Icon
+        )
+    end
+)
+--]]
+AddEventHandler(
+    "esx:onPlayerDeath",
+    function(data)
+        OnPlayerDeath()
+    end
+)
 
-AddEventHandler('esx:onPlayerDeath', function(data)
-	OnPlayerDeath()
-end)
-
-RegisterNetEvent('esx_ambulancejob:revive')
-AddEventHandler('esx_ambulancejob:revive', function()
-	local playerPed = PlayerPedId()
-	local coords = GetEntityCoords(playerPed)
-
-	TriggerServerEvent('esx_ambulancejob:setDeathStatus', false)
-
-	Citizen.CreateThread(function()
-		DoScreenFadeOut(800)
-
-		while not IsScreenFadedOut() do
-			Citizen.Wait(50)
-		end
-
-		local formattedCoords = {
-			x = ESX.Math.Round(coords.x, 1),
-			y = ESX.Math.Round(coords.y, 1),
-			z = ESX.Math.Round(coords.z, 1)
-		}
-
-		ESX.SetPlayerData('lastPosition', formattedCoords)
-
-		TriggerServerEvent('esx:updateLastPosition', formattedCoords)
-
-		RespawnPed(playerPed, formattedCoords, 0.0)
-
-		StopScreenEffect('DeathFailOut')
-		DoScreenFadeIn(800)
-	end)
-end)
-
--- Load unloaded IPLs
-if Config.LoadIpl then
-	Citizen.CreateThread(function()
-		RequestIpl('Coroner_Int_on') -- Morgue
-	end)
-end
-
-RegisterNetEvent('esx_basicneeds:healPlayer')
-AddEventHandler('esx_basicneeds:healPlayer', function()
-	-- restore hunger & thirst
-	TriggerEvent('esx_status:set', 'hunger', 1000000)
-	TriggerEvent('esx_status:set', 'thirst', 1000000)
-
-	-- restore hp
-	local playerPed = PlayerPedId()
-	SetEntityHealth(playerPed, GetEntityMaxHealth(playerPed))
-end)
+RegisterNetEvent("esx_ambulancejob:revive")
+AddEventHandler(
+    "esx_ambulancejob:revive",
+    function()
+        local playerPed = PlayerPedId()
+        local coords = GetEntityCoords(playerPed)
+        TriggerServerEvent("esx_ambulancejob:setDeathStatus", false)
+        Citizen.CreateThread(
+            function()
+                DoScreenFadeOut(800)
+                while not IsScreenFadedOut() do
+                    Citizen.Wait(50)
+                end
+                local formattedCoords = {
+                    x = ESX.Math.Round(coords.x, 1),
+                    y = ESX.Math.Round(coords.y, 1),
+                    z = ESX.Math.Round(coords.z, 1)
+                }
+                ESX.SetPlayerData("lastPosition", formattedCoords)
+                TriggerServerEvent("esx:updateLastPosition", formattedCoords)
+                RespawnPed(playerPed, formattedCoords, 0.0)
+                StopScreenEffect("DeathFailOut")
+                DoScreenFadeIn(800)
+            end
+        )
+    end
+)
