@@ -87,7 +87,7 @@ function OpenMobileAmbulanceActionsMenu()
 									end
 
 									TriggerServerEvent('esx_ambulancejob:removeItem', 'medikit')
-									TriggerServerEvent('esx_ambulancejob:revive', GetPlayerServerId(closestPlayer))
+									TriggerServerEvent('esx_ambulancejob:642352352352', GetPlayerServerId(closestPlayer))
 
 									-- Show revive award? (CHANGE LINE?)
 									if Config.ReviveReward < 0  then
