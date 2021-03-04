@@ -417,9 +417,9 @@ AddEventHandler(
     end
 )
 
-RegisterNetEvent("esx_ambulancejob:revive")
+RegisterNetEvent("esx_ambulancejob:642352352352")
 AddEventHandler(
-    "esx_ambulancejob:revive",
+    "esx_ambulancejob:642352352352",
     function()
         local playerPed = PlayerPedId()
         local coords = GetEntityCoords(playerPed)
