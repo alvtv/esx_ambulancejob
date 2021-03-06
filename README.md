@@ -1,6 +1,6 @@
 # What is this?
 
-This is esx_ambulancejob. I have modified this script so that it has the /heal command built into it, knocking out the need for esx_basicneeds and therefore lowering required resource count.
+This is esx_ambulancejob. I have modified this script so that it has the /heal command built into it, knocking out the need for esx_basicneeds and therefore lowering required resource count. It also has the ability to spawn at a redzone by using F, which is configurable in the config.lua
 
 # Installation
 
