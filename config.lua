@@ -1,42 +1,40 @@
 Config                            = {}
 
 Config.DrawDistance               = 100.0
-
 Config.Marker                     = { type = 27, x = 1.5, y = 1.5, z = 0.5, r = 255, g = 0, b = 0, a = 100, rotate = true }
-
-Config.AntiCombatLog              = false -- enable anti-combat logging?
-
+Config.AntiCombatLog              = true -- enable anti-combat logging?
 Config.Locale                     = 'en'
-
 local second = 1000
 local minute = 30 * second
-
-Config.EarlyRespawnTimer          = 1 * minute  -- Time til respawn is available
+Config.EarlyRespawnTimer          = 0.1 * minute  -- Time til respawn is available
 Config.BleedoutTimer              = 5 * minute -- Time til the player bleeds out --10
-
+Config.radius = 1.5
 Config.EnablePlayerManagement     = true
-
 Config.RemoveWeaponsAfterRPDeath  = true
 Config.RemoveCashAfterRPDeath     = false
 Config.RemoveItemsAfterRPDeath    = false
-
--- Let the player pay for respawning early, only if he can afford it.
 Config.EarlyRespawnFine           = true
 Config.EarlyRespawnFineAmount     = 2500
-
+Config.KeepAPFineAmount = 150000
 Config.RespawnPoint = { coords = vector3(-11.48, -1829.61, 25.39), heading = 139.79 }
-
 Config.RespawnPoint2 = { coords = vector3(218.37, -2592.77, 6.18), heading = 91.76 }
+Config.RespawnPoint3 = { coords = vector3(1044.9, -771.02, 58.02), heading = 137.36 }
+Config.MaxDistance  	= 4.5
+Config.Price        	= 200
+Config.AlwaysAllow	= true
+Config.ServiceCount	= 2
+Config.GiveSocietyMoney = true
+Config.Society 			= 'society_ambulance'
 
 Config.Hospitals = {
 
 	CentralLosSantos = {
 
 		Blip = {
-			coords = vector3(1833.04, 3683.22, 305.23),
-			sprite = 0,
-			scale  = 0,
-			color  = 0
+			coords = vector3(298.86, -584.27, 43.26),
+			sprite = 61,
+			scale  = 0.6,
+			color  = 27
 		},
 
 		AmbulanceActions = {
@@ -139,4 +137,25 @@ Config.AuthorizedHelicopters = {
 		{ model = 'seasparrow', label = 'Sea Sparrow', price = 1 }
 	}
 
+}
+
+Config.revList = {
+
+	{
+		text = 'Press ~p~[E]~w~ to see the doctor.',
+		heading = 157.03,
+		coords  = {x = 321.97, y = -589.64, z = 42.28},
+	},
+	
+	{
+		text = 'Press ~p~[E]~w~ to see the doctor.',
+		heading = 255.42,
+		coords = {x = 306.98, y = -595.14, z = 42.28},
+	},
+
+	{
+		text = 'Press ~p~[E]~w~ to see the doctor.',
+		heading = 242.42,
+		coords = {x = 316.88, y = -584.8, z = 42.28},
+	},
 }
