@@ -102,6 +102,16 @@ if Config.EarlyRespawnFine then
 		TriggerClientEvent('esx:showNotification', xPlayer.source, _U('respawn_bleedout_fine_msg', ESX.Math.GroupDigits(fineAmount)))
 		xPlayer.removeAccountMoney('bank', fineAmount)
 	end)
+
+	RegisterServerEvent('esx_ambulancejob:payFine2')
+	AddEventHandler('esx_ambulancejob:payFine2', function()
+		local xPlayer = ESX.GetPlayerFromId(source)
+		local fineAmount2 = Config.KeepAPFineAmount
+
+		TriggerClientEvent('esx:showNotification', xPlayer.source, _U('respawn_bleedout_fine_msgg', ESX.Math.GroupDigits(fineAmount2)))
+		xPlayer.removeAccountMoney('bank', fineAmount2)
+	end)
+
 end
 
 ESX.RegisterServerCallback('esx_ambulancejob:getItemAmount', function(source, cb, item)
@@ -330,3 +340,39 @@ TriggerEvent('es:addGroupCommand', 'heal', 'admin', function(source, args, user)
 end, function(source, args, user)
 	TriggerClientEvent('chat:addMessage', source, { args = { '^1SYSTEM', 'Insufficient Permissions.' } })
 end, {help = 'Heal a player, or yourself - restores thirst, hunger and health.', params = {{name = 'playerId', help = '(optional) player id'}}})
+
+ESX.RegisterServerCallback('revivescript:getConnectedEMS', function(source, cb)
+	local players = ESX.GetPlayers()
+	local amount = 0
+
+	for i=1, #xPlayers, 1 do
+		local xPlayer = ESX.GetPlayerFromId(xPlayers[i])
+		if xPlayer.job.name == 'ambulance' then
+			amount = amount + 1
+		end
+	end
+		
+	cb(amount)
+		
+end)
+ESX.RegisterServerCallback('revivescript:checkMoney', function(source, cb)
+	local xPlayer = ESX.GetPlayerFromId(source)
+	if xPlayer.getMoney() >= Config.Price then
+		cb(true)
+	else
+		cb(false)
+	end
+end)
+
+RegisterServerEvent('revivescript:pay')
+AddEventHandler('revivescript:pay', function()
+	local xPlayer = ESX.GetPlayerFromId(source)
+	xPlayer.removeMoney(Config.Price)
+	TriggerClientEvent('esx:showNotification', source, 'You paid $' .. Config.Price .. ' to doctors for revive.')
+
+	if Config.GiveSocietyMoney then
+		TriggerEvent('esx_addonaccount:getSharedAccount', Config.Society, function(account)
+			account.addMoney(Config.Price)
+		end)
+	end
+end)
