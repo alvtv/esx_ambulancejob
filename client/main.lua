@@ -11,7 +11,7 @@ Keys = {
 }
 
 local FirstSpawn, PlayerLoaded = true, false
-
+local InAction = false
 IsDead = false
 ESX = nil
 
@@ -87,6 +87,7 @@ Citizen.CreateThread(function()
 			EnableControlAction(0, Keys['T'], true)
 			EnableControlAction(0, Keys['E'], true)
 			EnableControlAction(0, Keys['F'], true)
+            EnableControlAction(0, Keys['B'], true)
 		else
 			Citizen.Wait(500)
 		end
@@ -152,7 +153,7 @@ function StartDistressSignal()
 			Citizen.Wait(2)
 			timer = timer - 30
 
-			SetTextFont(4)
+			SetTextFont(7)
 			SetTextScale(0.45, 0.45)
 			SetTextColour(185, 185, 185, 255)
 			SetTextDropshadow(0, 0, 0, 0, 255)
@@ -161,7 +162,7 @@ function StartDistressSignal()
 			SetTextOutline()
 			BeginTextCommandDisplayText('STRING')
 			AddTextComponentSubstringPlayerName(_U('distress_send'))
-			EndTextCommandDisplayText(0.175, 0.805)
+			EndTextCommandDisplayText(0.385, 0.025415)
 
 			if IsControlPressed(0, Keys['G']) then
 				SendDistressSignal()
@@ -270,7 +271,6 @@ function StartDeathTimer()
     Citizen.CreateThread(
         function()
             local text, timeHeld
-            local text2
             -- early respawn timer
             while earlySpawnTimer > 0 and IsDead do
                 Citizen.Wait(0)
@@ -281,32 +281,34 @@ function StartDeathTimer()
                 --SetTextEntry("STRING")
                 --AddTextComponentString(text)
                 --DrawText(0.5, 0.8)
-                DrawTextOnScreen('~w~Respawn available in ~b~'..mins..' ~w~minutes & ~b~'..secs..' ~w~seconds.', 0.5, 0.8, 0.45)
+                DrawTextOnScreen('~w~Respawn available in ~p~'..mins..' ~w~minutes & ~p~'..secs..' ~w~seconds.', 0.5, 0.8, 0.45)
             end
             -- bleedout timer
             while bleedoutTimer > 0 and IsDead do
                 Citizen.Wait(0)
                 local mins2, secs2 = secondsToClock(bleedoutTimer)
-                text = '~w~You will bleed out in ~b~'..mins2..' ~w~minutes & ~b~'..secs2..' ~w~seconds.'
-               -- text = _U("respawn_bleedout_in", secondsToClock(bleedoutTimer))
                 if not Config.EarlyRespawnFine then
-                    text = text.. '\nHold [~b~E~s~] to Respawn'
+                    text = text.. '\nHold [~p~E~s~] to Respawn'
                     --text = text .. _U("respawn_bleedout_prompt")
                     --text2 = _U("respawn_bleedout_prompt2")
                     if IsControlPressed(0, Keys["E"]) and timeHeld > 60 then
                         RemoveItemsAfterRPDeath('grove')
                         break
                     elseif IsControlPressed(0, Keys["F"]) and timeHeld > 60 then
-                        RemoveItemsAfterRPDeath('rzgs')
+                        break
+                    elseif IsControlPressed(0, Keys["B"]) and timeHeld > 60 then
                         break
                     end
                 elseif Config.EarlyRespawnFine and canPayFine then
                    -- text = text .. _U("respawn_bleedout_fine", ESX.Math.GroupDigits(Config.EarlyRespawnFineAmount))
                    local reamount = ESX.Math.GroupDigits(Config.EarlyRespawnFineAmount)
+                   local reamount2 = ESX.Math.GroupDigits(Config.KeepAPFineAmount)
                    --text = text.. '\nHold [~o~E~s~] to Respawn at Grove Street for ~o~$'..reamount..'~s~'
                     --text2 = _U("respawn_bleedout_fine2", 2500)
-                    DrawTextOnScreen('\nHold [~o~E~s~] to Respawn at Grove Street for ~o~$'..reamount..'~s~', 0.5, 0.81, 0.45)
-                    DrawTextOnScreen('\nHold [~o~F~s~] to Respawn at RZ Traintracks for ~o~$'..reamount..'~s~', 0.5, 0.85, 0.45)
+                    DrawTextOnScreen('\nYou will bleed out in ~p~'..mins2..' ~w~minutes and ~p~'..secs2..'~w~ seconds.', 0.5, 0.77, 0.45)
+                    DrawTextOnScreen('\nHold [~p~E~s~] to Respawn at Grove Street for ~p~$'..reamount..'~s~', 0.5, 0.81, 0.45)
+                    DrawTextOnScreen('\nHold [~p~F~s~] to Respawn at RZ Traintracks for ~p~$'..reamount..'~s~', 0.5, 0.85, 0.45)
+                    DrawTextOnScreen('\nHold [~p~B~s~] to Respawn at Mirror Park with AP Pistol ~p~$'..reamount2..'~s~', 0.5, 0.89, 0.45)
                     if IsControlPressed(0, Keys["E"]) and timeHeld > 60 then
                         TriggerServerEvent("esx_ambulancejob:payFine")
                         RemoveItemsAfterRPDeath('grove')
@@ -314,12 +316,17 @@ function StartDeathTimer()
                     elseif IsControlPressed(0, Keys["F"]) and timeHeld > 60 then
                         TriggerServerEvent("esx_ambulancejob:payFine")
                         RemoveItemsAfterRPDeath('rzgs')
+                    elseif IsControlPressed(0, Keys["B"]) and timeHeld > 60 then
+                        TriggerServerEvent("esx_ambulancejob:payFine2")
+                        RemoveItemsAfterRPDeath('keepap')
                         break
                     end
                 end
                 if IsControlPressed(0, Keys["E"]) then
                     timeHeld = timeHeld + 1
                 elseif IsControlPressed(0, Keys["F"]) then
+                    timeHeld = timeHeld + 1
+                elseif IsControlPressed(0, Keys["B"]) then
                     timeHeld = timeHeld + 1
                 else
                     timeHeld = 0
@@ -363,6 +370,11 @@ function RemoveItemsAfterRPDeath(location)
                         y = Config.RespawnPoint2.coords.y,
                         z = Config.RespawnPoint2.coords.z
                     }
+                    local formattedCoords3 = {
+                        x = Config.RespawnPoint3.coords.x,
+                        y = Config.RespawnPoint3.coords.y,
+                        z = Config.RespawnPoint3.coords.z
+                    }
                     if location == 'grove' then
                         ESX.SetPlayerData("lastPosition", formattedCoords)
                         ESX.SetPlayerData("loadout", {})
@@ -377,6 +389,13 @@ function RemoveItemsAfterRPDeath(location)
                         RespawnPed(PlayerPedId(), formattedCoords2, Config.RespawnPoint2.heading)
                         StopScreenEffect("DeathFailOut")
                         DoScreenFadeIn(800)
+                    elseif location == 'keepap' then
+                        ESX.SetPlayerData("lastPosition", formattedCoords3)
+                        TriggerServerEvent("esx:updateLastPosition", formattedCoords3)
+                        RespawnPed(PlayerPedId(), formattedCoords3, Config.RespawnPoint3.heading)
+                        StopScreenEffect("DeathFailOut")
+                        DoScreenFadeIn(800)
+                        ESX.SetPlayerData("loadout", {})
                     end
                 end
             )
@@ -391,25 +410,7 @@ function RespawnPed(ped, coords, heading)
     ClearPedBloodDamage(ped)
     ESX.UI.Menu.CloseAll()
 end
---[[
-RegisterNetEvent("esx_phone:loaded")
-AddEventHandler(
-    "esx_phone:loaded",
-    function(phoneNumber, contacts)
-        local specialContact = {
-            name = "Ambulance",
-            number = "ambulance",
-            base64Icon = "data:image/png;base64,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"
-        }
-        TriggerEvent(
-            "esx_phone:addSpecialContact",
-            specialContact.name,
-            specialContact.number,
-            specialContact.base64Icon
-        )
-    end
-)
---]]
+
 AddEventHandler(
     "esx:onPlayerDeath",
     function(data)
@@ -444,3 +445,233 @@ AddEventHandler(
         )
     end
 )
+
+local cam = nil
+
+local isDead = false
+
+local angleY = 0.0
+local angleZ = 0.0
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(1)
+        
+        if (cam and isDead) then
+            ProcessCamControls()
+        end
+    end
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(500)
+        
+        if (not isDead and NetworkIsPlayerActive(PlayerId()) and IsPedFatallyInjured(PlayerPedId())) then
+            isDead = true
+            
+            StartDeathCam()
+        elseif (isDead and NetworkIsPlayerActive(PlayerId()) and not IsPedFatallyInjured(PlayerPedId())) then
+            isDead = false
+            
+            EndDeathCam()
+        end
+    end
+end)
+
+function StartDeathCam()
+    ClearFocus()
+
+    local playerPed = PlayerPedId()
+    
+    cam = CreateCamWithParams("DEFAULT_SCRIPTED_CAMERA", GetEntityCoords(playerPed), 0, 0, 0, GetGameplayCamFov())
+
+    SetCamActive(cam, true)
+    RenderScriptCams(true, true, 1000, true, false)
+end
+
+function EndDeathCam()
+    ClearFocus()
+
+    RenderScriptCams(false, false, 0, true, false)
+    DestroyCam(cam, false)
+    
+    cam = nil
+end
+
+function ProcessCamControls()
+    local playerPed = PlayerPedId()
+    local playerCoords = GetEntityCoords(playerPed)
+
+    DisableFirstPersonCamThisFrame()
+
+    local newPos = ProcessNewPosition()
+
+    -- focus cam area
+    SetFocusArea(newPos.x, newPos.y, newPos.z, 0.0, 0.0, 0.0)
+    
+    -- set coords of cam
+    SetCamCoord(cam, newPos.x, newPos.y, newPos.z)
+    
+    -- set rotation
+    PointCamAtCoord(cam, playerCoords.x, playerCoords.y, playerCoords.z + 0.5)
+end
+
+function ProcessNewPosition()
+    local mouseX = 0.0
+    local mouseY = 0.0
+    
+    -- keyboard
+    if (IsInputDisabled(0)) then
+        -- rotation
+        mouseX = GetDisabledControlNormal(1, 1) * 8.0
+        mouseY = GetDisabledControlNormal(1, 2) * 8.0
+        
+    -- controller
+    else
+        -- rotation
+        mouseX = GetDisabledControlNormal(1, 1) * 1.5
+        mouseY = GetDisabledControlNormal(1, 2) * 1.5
+    end
+
+    angleZ = angleZ - mouseX -- around Z axis (left / right)
+    angleY = angleY + mouseY -- up / down
+    -- limit up / down angle to 90°
+    if (angleY > 89.0) then angleY = 89.0 elseif (angleY < -89.0) then angleY = -89.0 end
+    
+    local pCoords = GetEntityCoords(PlayerPedId())
+    
+    local behindCam = {
+        x = pCoords.x + ((Cos(angleZ) * Cos(angleY)) + (Cos(angleY) * Cos(angleZ))) / 2 * (Config.radius + 0.5),
+        y = pCoords.y + ((Sin(angleZ) * Cos(angleY)) + (Cos(angleY) * Sin(angleZ))) / 2 * (Config.radius + 0.5),
+        z = pCoords.z + ((Sin(angleY))) * (Config.radius + 0.5)
+    }
+    local rayHandle = StartShapeTestRay(pCoords.x, pCoords.y, pCoords.z + 0.5, behindCam.x, behindCam.y, behindCam.z, -1, PlayerPedId(), 0)
+    local a, hitBool, hitCoords, surfaceNormal, entityHit = GetShapeTestResult(rayHandle)
+    
+    local maxRadius = Config.radius
+    if (hitBool and Vdist(pCoords.x, pCoords.y, pCoords.z + 0.5, hitCoords) < Config.radius + 0.5) then
+        maxRadius = Vdist(pCoords.x, pCoords.y, pCoords.z + 0.5, hitCoords)
+    end
+    
+    local offset = {
+        x = ((Cos(angleZ) * Cos(angleY)) + (Cos(angleY) * Cos(angleZ))) / 2 * maxRadius,
+        y = ((Sin(angleZ) * Cos(angleY)) + (Cos(angleY) * Sin(angleZ))) / 2 * maxRadius,
+        z = ((Sin(angleY))) * maxRadius
+    }
+    
+    local pos = {
+        x = pCoords.x + offset.x,
+        y = pCoords.y + offset.y,
+        z = pCoords.z + offset.z
+    }
+    
+    
+    -- Debug x,y,z axis
+    --DrawMarker(1, pCoords.x, pCoords.y, pCoords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.03, 0.03, 5.0, 0, 0, 255, 255, false, false, 2, false, 0, false)
+    --DrawMarker(1, pCoords.x, pCoords.y, pCoords.z, 0.0, 0.0, 0.0, 0.0, 90.0, 0.0, 0.03, 0.03, 5.0, 255, 0, 0, 255, false, false, 2, false, 0, false)
+    --DrawMarker(1, pCoords.x, pCoords.y, pCoords.z, 0.0, 0.0, 0.0, -90.0, 0.0, 0.0, 0.03, 0.03, 5.0, 0, 255, 0, 255, false, false, 2, false, 0, false)
+    
+    return pos
+end
+
+Citizen.CreateThread(function()
+    while true do
+
+        Citizen.Wait(5)
+
+        for i=1, #Config.revList do
+            local revID   = Config.revList[i]
+            local distance = GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()), revID.coords.x, revID.coords.y, revID.coords.z, true)
+
+            if distance < Config.MaxDistance and InAction == false then
+		if not Config.AlwaysAllow then
+		    ESX.TriggerServerCallback('revivescript:getConnectedEMS', function(amount)
+			if amount < Config.ServiceCount then
+			    --ESX.Game.Utils.DrawText3D({ x = revID.coords.x, y = revID.coords.y, z = revID.coords.z + 1 }, revID.text, 1.2, 2)
+				DrawText3D({ x = revID.coords.x, y = revID.coords.y, z = revID.coords.z})
+
+                	    if IsControlJustReleased(0, Keys['E']) then
+                    		revActive(revID.coords.x, revID.coords.y, revID.coords.z, revID.heading, revID)
+                    	    end						
+			end
+		    end)			
+		else
+		    ESX.Game.Utils.DrawText3D({ x = revID.coords.x, y = revID.coords.y, z = revID.coords.z + 1 }, revID.text, 0.5, 7)
+				--DrawText3D({ x = revID.coords.x, y = revID.coords.y, z = revID.coords.z}, 'Test: ' .. revID.text)
+
+                    if IsControlJustReleased(0, Keys['E']) then
+                    	revActive(revID.coords.x, revID.coords.y, revID.coords.z, revID.heading, revID)
+                    end				
+		end
+            end
+        end
+    end
+end)
+
+function RespawnPed(ped, coords, heading)
+    SetEntityCoordsNoOffset(ped, 321.97, -590.64, 43.28, false, false, false, true)
+    NetworkResurrectLocalPlayer(321.97, -590.64, 43.28, 157.03, true, false)
+    SetPlayerInvincible(ped, false)
+    TriggerEvent('playerSpawned', 321.97, -590.64, 43.28)
+    ClearPedBloodDamage(ped)
+end
+
+function revActive(x, y, z, heading, source)
+	ESX.TriggerServerCallback('revivescript:checkMoney', function(hasEnoughMoney)
+	if hasEnoughMoney then
+		InAction = true
+		Citizen.CreateThread(function ()
+			Citizen.Wait(5)
+			local health = GetEntityHealth(PlayerPedId())
+			if (health < 300)  then		
+			if InAction == true then
+				local formattedCoords = {
+					x = 321.97,  
+					y = -590.64,
+					z = 43.28
+				}
+
+				local playerID = ESX.Game.GetPlayerServerId
+			
+				ESX.SetPlayerData('lastPosition', formattedCoords)
+				ESX.SetPlayerData('loadout', {})
+				TriggerServerEvent('esx_ambulancejob:revive', playerID)
+				TriggerServerEvent('revivescript:pay')
+				RespawnPed(PlayerPedId(), formattedCoords, 157.03)
+				TriggerServerEvent('esx:updateLastPosition', formattedCoords)
+				StopScreenEffect('DeathFailOut')
+				DoScreenFadeIn(800)
+				ESX.ShowNotification('You have been revived.')
+				ClearPedTasks(GetPlayerPed(-1))
+				FreezeEntityPosition(GetPlayerPed(-1), false)
+				SetEntityCoords(GetPlayerPed(-1), x + 1.0, y, z)			
+				InAction = false
+			end
+
+			elseif (health == 200) then
+				ESX.ShowNotification('You do not need medical attention')
+			end
+		end)
+	else
+		ESX.ShowNotification('You do not have $' .. Config.Price .. ' to pay doctors.')
+	end
+	end)
+end
+
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(0)
+        SetPlayerHealthRechargeMultiplier(PlayerId(), 0.0)
+    end
+end)
+
+
+--XAchse Westen Osten
+--Yachse Norden Süden
+--ZAchse oben unten
+
+--gegenkathete = x
+--ankathete = y
+--hypotenuse = 1
+--alpha = GetCamRot(cam).z
